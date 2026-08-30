@@ -68,6 +68,13 @@ h1 {
   letter-spacing: -0.035em;
 }
 
+.subtitle {
+  margin: 8px 0 0;
+  color: var(--text);
+  font-size: 18px;
+  font-weight: 650;
+}
+
 .intro {
   max-width: 640px;
   margin: 12px 0 0;
