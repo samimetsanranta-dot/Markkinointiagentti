@@ -19,7 +19,7 @@ export default function Home() {
         <div>
           <p className="eyebrow">Sisällöntuotannon työtila</p>
           <h1 id="page-title">Markkinointiagentti</h1>
-          <p className="subtitle">AI-avusteinen markkinointityökalu</p>
+          <p className="subtitle">AI-avusteinen markkinointityökalu yrityksille</p>
           <p className="intro">
             Määrittele sisältötarve ja valmistele lähtötiedot markkinointisisältöä varten.
           </p>
