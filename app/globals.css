@@ -156,6 +156,7 @@ button {
 
 button:hover { background: var(--primary-dark); box-shadow: 0 10px 24px rgba(18, 97, 214, 0.26); transform: translateY(-1px); }
 button:active { transform: translateY(0); }
+button:disabled { cursor: wait; opacity: 0.7; transform: none; }
 button:focus-visible { outline: 3px solid rgba(18, 97, 214, 0.28); outline-offset: 3px; }
 
 .result {
@@ -173,6 +174,8 @@ button:focus-visible { outline: 3px solid rgba(18, 97, 214, 0.28); outline-offse
 }
 
 .result p { margin: 0; line-height: 1.5; }
+.generated-content { white-space: pre-wrap; overflow-wrap: anywhere; }
+.result-error { color: #9f2424; border-color: #e4b4b4; background: #fff5f5; }
 .result-visible { justify-content: flex-start; gap: 14px; border-style: solid; border-color: #bfd5fa; background: var(--primary-soft); text-align: left; }
 .result-visible h2 { margin: 0 0 3px; color: var(--text); font-size: 16px; }
 .result-icon { display: grid; place-items: center; flex: 0 0 34px; height: 34px; border-radius: 50%; background: var(--primary); color: white; font-weight: 800; }

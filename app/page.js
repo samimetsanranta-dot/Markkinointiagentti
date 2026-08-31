@@ -1,15 +1,46 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 const customers = ["IKH", "Flextra", "Jukolan Juusto"];
 
 export default function Home() {
-  const [submitted, setSubmitted] = useState(false);
+  const [content, setContent] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const pending = useRef(false);
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
-    setSubmitted(true);
+    if (pending.current) return;
+    const fields = Object.fromEntries(new FormData(event.currentTarget));
+    pending.current = true;
+    setLoading(true);
+    setError("");
+    setContent("");
+    try {
+      const response = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(fields),
+        signal: AbortSignal.timeout(35000),
+      });
+      const result = await response.json().catch(() => null);
+      if (!response.ok) {
+        setError(result?.error || "Sisällön luominen epäonnistui. Yritä uudelleen.");
+      } else if (typeof result?.text !== "string" || !result.text.trim()) {
+        setError("AI ei palauttanut tekstiä. Yritä uudelleen.");
+      } else {
+        setContent(result.text);
+      }
+    } catch (error) {
+      setError(error.name === "TimeoutError"
+        ? "Sisällön luominen kesti liian kauan. Yritä uudelleen."
+        : "Yhteys palvelimeen epäonnistui. Tarkista verkkoyhteys ja yritä uudelleen.");
+    } finally {
+      pending.current = false;
+      setLoading(false);
+    }
   }
 
   return (
@@ -42,35 +73,42 @@ export default function Home() {
 
           <div className="field full-width">
             <label htmlFor="product">Tuote</label>
-            <input id="product" name="product" type="text" placeholder="Esim. akkukäyttöinen ruohonleikkuri" required />
+            <input id="product" name="product" type="text" maxLength={200} placeholder="Esim. akkukäyttöinen ruohonleikkuri" required />
           </div>
 
           <div className="field full-width">
             <label htmlFor="productInfo">Tuotetiedot</label>
-            <textarea id="productInfo" name="productInfo" rows="4" placeholder="Kuvaile tuotteen tärkeimmät ominaisuudet, hyödyt ja erottautumistekijät" required />
+            <textarea id="productInfo" name="productInfo" rows="4" maxLength={4000} placeholder="Kuvaile tuotteen tärkeimmät ominaisuudet, hyödyt ja erottautumistekijät" required />
           </div>
 
           <div className="form-grid">
             <div className="field">
               <label htmlFor="audience">Kohderyhmä</label>
-              <textarea id="audience" name="audience" rows="3" placeholder="Kenelle sisältö on suunnattu?" required />
+              <textarea id="audience" name="audience" rows="3" maxLength={1000} placeholder="Kenelle sisältö on suunnattu?" required />
             </div>
             <div className="field">
               <label htmlFor="goal">Tavoite</label>
-              <textarea id="goal" name="goal" rows="3" placeholder="Mitä sisällöllä halutaan saavuttaa?" required />
+              <textarea id="goal" name="goal" rows="3" maxLength={1000} placeholder="Mitä sisällöllä halutaan saavuttaa?" required />
             </div>
           </div>
 
-          <button type="submit">Luo sisältö <span aria-hidden="true">→</span></button>
+          <button type="submit" disabled={loading}>
+            {loading ? "Luodaan sisältöä…" : "Luo sisältö"}
+            {!loading && <span aria-hidden="true">→</span>}
+          </button>
         </form>
 
-        <div className={`result ${submitted ? "result-visible" : ""}`} aria-live="polite">
-          {submitted ? (
+        <div className={`result ${content ? "result-visible" : ""} ${error ? "result-error" : ""}`} aria-live="polite" aria-atomic="true" aria-busy={loading}>
+          {loading ? (
+            <p>Kirjoitetaan markkinointitekstiä. Odota hetki…</p>
+          ) : error ? (
+            <p role="alert">{error}</p>
+          ) : content ? (
             <>
               <div className="result-icon" aria-hidden="true">✓</div>
               <div>
-                <h2>Sisältöpyyntö on valmis</h2>
-                <p>AI:n tuottama sisältö näytetään tässä, kun integraatio otetaan käyttöön.</p>
+                <h2>Markkinointiteksti on valmis</h2>
+                <p className="generated-content">{content}</p>
               </div>
             </>
           ) : (
