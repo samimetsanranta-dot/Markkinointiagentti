@@ -8,9 +8,14 @@ const request = (body = fields, headers = {}) => new Request("http://localhost/a
   headers: { "Content-Type": "application/json", ...headers },
   body: JSON.stringify(body),
 });
-const success = (text = "Napakka markkinointiteksti.") => ({
+const sections = {
+  marketingAngle: "Tehoa vaativaan tekemiseen.",
+  videoHook: "Mitä jos työkalusi pysyisi aina vauhdissasi?",
+  socialPost: "Tee työsi tehokkaasti kahdella akulla. Tutustu tuotteeseen!",
+};
+const success = (content = sections) => ({
   status: "completed",
-  output: [{ type: "message", role: "assistant", content: [{ type: "output_text", text }] }],
+  output: [{ type: "message", role: "assistant", content: [{ type: "output_text", text: JSON.stringify(content) }] }],
 });
 
 test("Generate API", async (t) => {
@@ -41,7 +46,7 @@ test("Generate API", async (t) => {
     process.env.OPENAI_API_KEY = "test-secret-never-expose";
   });
 
-  await t.test("sends all fields server-side and extracts output_text parts", async (t) => {
+  await t.test("requests three structured sections and returns them separately", async (t) => {
     t.mock.method(globalThis, "fetch", async (url, options) => {
       assert.equal(url, "https://api.openai.com/v1/responses");
       assert.equal(options.headers.Authorization, "Bearer test-secret-never-expose");
@@ -49,18 +54,25 @@ test("Generate API", async (t) => {
       assert.equal(body.model, "gpt-4.1-mini");
       assert.equal(body.store, false);
       assert.equal(body.max_output_tokens, 700);
+      assert.equal(body.text.format.type, "json_schema");
+      assert.equal(body.text.format.strict, true);
+      assert.deepEqual(body.text.format.schema.required, ["marketingAngle", "videoHook", "socialPost"]);
+      assert.equal(body.text.format.schema.additionalProperties, false);
+      assert.match(body.instructions, /Markkinointikulma/);
+      assert.match(body.instructions, /Videokoukku/);
+      assert.match(body.instructions, /Somejulkaisu/);
+      assert.match(body.instructions, /älä keksi/i);
       assert.ok(options.signal instanceof AbortSignal);
       assert.deepEqual(Object.values(JSON.parse(body.input)), Object.values(fields));
       assert.ok(!options.body.includes("test-secret"));
       const output = success();
       output.output.unshift({ type: "reasoning", summary: [] });
-      output.output[1].content.push({ type: "output_text", text: "Tutustu tuotteeseen!" });
       return Response.json(output);
     });
     const response = await POST(request());
     assert.equal(response.status, 200);
     assert.equal(response.headers.get("cache-control"), "no-store");
-    assert.deepEqual(await response.json(), { text: "Napakka markkinointiteksti.\n\nTutustu tuotteeseen!" });
+    assert.deepEqual(await response.json(), { content: sections });
   });
 
   for (const [upstream, expected] of [[401, 503], [403, 503], [429, 429], [500, 502]]) {
@@ -74,8 +86,15 @@ test("Generate API", async (t) => {
     });
   }
 
-  for (const result of [{ ...success(), status: "incomplete" }, success(""), { status: "completed", output: [{ type: "message", role: "assistant", content: [{ type: "refusal", refusal: "No" }] }] }, { status: "completed" }]) {
-    await t.test("rejects incomplete, empty, refused or malformed results", async (t) => {
+  for (const result of [
+    { ...success(), status: "incomplete" },
+    success({ ...sections, videoHook: "" }),
+    success({ marketingAngle: sections.marketingAngle, videoHook: sections.videoHook }),
+    { status: "completed", output: [{ type: "message", role: "assistant", content: [{ type: "output_text", text: "not json" }] }] },
+    { status: "completed", output: [{ type: "message", role: "assistant", content: [{ type: "refusal", refusal: "No" }] }] },
+    { status: "completed" },
+  ]) {
+    await t.test("rejects incomplete, empty, refused or malformed structured results", async (t) => {
       t.mock.method(globalThis, "fetch", async () => Response.json(result));
       assert.equal((await POST(request())).status, 502);
     });

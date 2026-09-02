@@ -1,6 +1,7 @@
 # Markkinointiagentti
 
-Next.js-lomake, joka tuottaa suomenkielisen markkinointitekstin OpenAI Responses API:lla
+Next.js-lomake, joka tuottaa OpenAI Responses API:lla kolme suomenkielistä
+sisältöosiota: markkinointikulman, videokoukun ja somejulkaisun
 (malli `gpt-4.1-mini`). Uusia ajonaikaisia riippuvuuksia ei tarvita.
 
 ## Käyttöönotto

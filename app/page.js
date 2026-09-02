@@ -5,7 +5,7 @@ import { useRef, useState } from "react";
 const customers = ["IKH", "Flextra", "Jukolan Juusto"];
 
 export default function Home() {
-  const [content, setContent] = useState("");
+  const [content, setContent] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const pending = useRef(false);
@@ -17,7 +17,7 @@ export default function Home() {
     pending.current = true;
     setLoading(true);
     setError("");
-    setContent("");
+    setContent(null);
     try {
       const response = await fetch("/api/generate", {
         method: "POST",
@@ -28,10 +28,12 @@ export default function Home() {
       const result = await response.json().catch(() => null);
       if (!response.ok) {
         setError(result?.error || "Sisällön luominen epäonnistui. Yritä uudelleen.");
-      } else if (typeof result?.text !== "string" || !result.text.trim()) {
-        setError("AI ei palauttanut tekstiä. Yritä uudelleen.");
+      } else if (!result?.content
+        || ["marketingAngle", "videoHook", "socialPost"]
+          .some((key) => typeof result.content[key] !== "string" || !result.content[key].trim())) {
+        setError("AI ei palauttanut kaikkia sisältöosioita. Yritä uudelleen.");
       } else {
-        setContent(result.text);
+        setContent(result.content);
       }
     } catch (error) {
       setError(error.name === "TimeoutError"
@@ -107,8 +109,21 @@ export default function Home() {
             <>
               <div className="result-icon" aria-hidden="true">✓</div>
               <div>
-                <h2>Markkinointiteksti on valmis</h2>
-                <p className="generated-content">{content}</p>
+                <h2>Markkinointisisältö on valmis</h2>
+                <div className="generated-sections">
+                  <section className="generated-section">
+                    <h3>Markkinointikulma</h3>
+                    <p>{content.marketingAngle}</p>
+                  </section>
+                  <section className="generated-section">
+                    <h3>Videokoukku</h3>
+                    <p>{content.videoHook}</p>
+                  </section>
+                  <section className="generated-section">
+                    <h3>Somejulkaisu</h3>
+                    <p>{content.socialPost}</p>
+                  </section>
+                </div>
               </div>
             </>
           ) : (
