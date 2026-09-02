@@ -75,6 +75,22 @@ test("Generate API", async (t) => {
     assert.deepEqual(await response.json(), { content: sections });
   });
 
+  for (const [customer, instruction] of [
+    ["IKH", "Kirjoita tekijähenkisesti, napakasti ja käytännönläheisesti. Vältä turhaa mainoskieltä."],
+    ["Flextra", "Kirjoita asiantuntevasti B2B-kohderyhmälle. Tee teknisistä asioista ymmärrettäviä, mutta älä keksi teknisiä tietoja."],
+    ["Jukolan Juusto", "Kirjoita helposti lähestyttävästi ja ruokahalua herättävästi. Korosta tuotteen makua ja käyttäjän antamia tuote-etuja, mutta älä keksi ominaisuuksia."],
+  ]) {
+    await t.test(`adds the ${customer} instruction to the prompt`, async (t) => {
+      t.mock.method(globalThis, "fetch", async (_url, options) => {
+        const body = JSON.parse(options.body);
+        assert.match(body.instructions, new RegExp(`Asiakaskohtainen ohje asiakkaalle ${customer}:`));
+        assert.ok(body.instructions.includes(instruction));
+        return Response.json(success());
+      });
+      assert.equal((await POST(request({ ...fields, customer }))).status, 200);
+    });
+  }
+
   for (const [upstream, expected] of [[401, 503], [403, 503], [429, 429], [500, 502]]) {
     await t.test(`handles upstream ${upstream} without leaking error bodies`, async (t) => {
       t.mock.method(globalThis, "fetch", async () => Response.json({ error: "test-secret-never-expose" }, { status: upstream }));
